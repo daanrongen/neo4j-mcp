@@ -1,6 +1,6 @@
 {
   "name": "@daanrongen/neo4j-mcp",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "MCP server for Neo4j — run Cypher queries, explore schema, and inspect database info over stdio",
   "type": "module",
   "license": "MIT",
