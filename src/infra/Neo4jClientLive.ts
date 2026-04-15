@@ -23,10 +23,13 @@ const wrapNeo4j = <A>(label: string, fn: () => Promise<A>): Effect.Effect<A, Neo
 const runSession = <A>(
   driver: Driver,
   fn: (session: Session) => Promise<A>,
+  accessMode?: "READ" | "WRITE",
 ): Effect.Effect<A, Neo4jError> =>
   Effect.tryPromise({
     try: async () => {
-      const session = driver.session();
+      const session = driver.session(
+        accessMode ? { defaultAccessMode: neo4j.session[accessMode] } : undefined,
+      );
       try {
         return await fn(session);
       } finally {
@@ -67,48 +70,44 @@ export const Neo4jClientLive = Layer.scoped(
 
     return {
       runQuery: (cypher, params = {}) =>
-        Effect.tryPromise({
-          try: async () => {
-            const session = driver.session();
-            try {
-              const result = await session.run(cypher, params);
-              return new QueryResult({
-                records: result.records.map((r) =>
-                  Object.fromEntries(r.keys.map((k) => [k, toJs(r.get(k))])),
-                ),
-                summary: {
-                  queryType: result.summary.queryType,
-                  counters: result.summary.counters.updates(),
-                },
-              });
-            } finally {
-              await session.close();
-            }
-          },
-          catch: (e) => new QueryError({ query: cypher, message: "Query failed", cause: e }),
-        }),
+        runSession(driver, async (session) => {
+          const result = await session.run(cypher, params);
+          return new QueryResult({
+            records: result.records.map((r) =>
+              Object.fromEntries(r.keys.map((k) => [k, toJs(r.get(k))])),
+            ),
+            summary: {
+              queryType: result.summary.queryType,
+              counters: result.summary.counters.updates(),
+            },
+          });
+        }).pipe(
+          Effect.mapError(
+            (e) => new QueryError({ query: cypher, message: "Query failed", cause: e }),
+          ),
+        ),
 
       runReadQuery: (cypher, params = {}) =>
-        Effect.tryPromise({
-          try: async () => {
-            const session = driver.session({ defaultAccessMode: neo4j.session.READ });
-            try {
-              const result = await session.run(cypher, params);
-              return new QueryResult({
-                records: result.records.map((r) =>
-                  Object.fromEntries(r.keys.map((k) => [k, toJs(r.get(k))])),
-                ),
-                summary: {
-                  queryType: result.summary.queryType,
-                  counters: result.summary.counters.updates(),
-                },
-              });
-            } finally {
-              await session.close();
-            }
+        runSession(
+          driver,
+          async (session) => {
+            const result = await session.run(cypher, params);
+            return new QueryResult({
+              records: result.records.map((r) =>
+                Object.fromEntries(r.keys.map((k) => [k, toJs(r.get(k))])),
+              ),
+              summary: {
+                queryType: result.summary.queryType,
+                counters: result.summary.counters.updates(),
+              },
+            });
           },
-          catch: (e) => new QueryError({ query: cypher, message: "Read query failed", cause: e }),
-        }),
+          "READ",
+        ).pipe(
+          Effect.mapError(
+            (e) => new QueryError({ query: cypher, message: "Read query failed", cause: e }),
+          ),
+        ),
 
       getLabels: () =>
         runSession(driver, async (session) => {
