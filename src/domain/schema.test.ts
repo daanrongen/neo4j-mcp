@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { Effect } from "effect";
-import { Neo4jClient } from "../../src/domain/Neo4jClient.ts";
-import { Neo4jClientTest } from "../../src/infra/Neo4jClientTest.ts";
+import { Neo4jClientTest } from "../infra/Neo4jClientTest.ts";
+import { Neo4jClient } from "./Neo4jClient.ts";
 
 describe("schema", () => {
   it("getLabels returns an empty array when no labels are set", async () => {
