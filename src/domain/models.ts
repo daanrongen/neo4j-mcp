@@ -19,7 +19,6 @@ export class RelationshipType extends Schema.Class<RelationshipType>("Relationsh
 }) {}
 
 export class PropertyKey extends Schema.Class<PropertyKey>("PropertyKey")({
-  label: Schema.String,
   property: Schema.String,
 }) {}
 
@@ -32,7 +31,6 @@ export class SchemaInfo extends Schema.Class<SchemaInfo>("SchemaInfo")({
 export class ServerInfo extends Schema.Class<ServerInfo>("ServerInfo")({
   address: Schema.String,
   version: Schema.String,
-  edition: Schema.String,
 }) {}
 
 export class IndexInfo extends Schema.Class<IndexInfo>("IndexInfo")({

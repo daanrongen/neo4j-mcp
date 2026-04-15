@@ -104,7 +104,6 @@ export const Neo4jClientLive = Layer.scoped(
         return result.records.map(
           (r: (typeof result.records)[number]) =>
             new PropertyKey({
-              label: "",
               property: r.get("propertyKey") as string,
             }),
         );
@@ -208,7 +207,6 @@ export const Neo4jClientLive = Layer.scoped(
           return new ServerInfo({
             address: info.address ?? "unknown",
             version: info.agent ?? "unknown",
-            edition: "unknown",
           });
         }),
     };
