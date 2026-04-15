@@ -3,7 +3,7 @@ import type { ManagedRuntime } from "effect";
 import { Effect } from "effect";
 import type { Neo4jError, QueryError } from "../../domain/errors.ts";
 import { Neo4jClient } from "../../domain/Neo4jClient.ts";
-import { formatError, formatSuccess } from "../utils.ts";
+import { runTool } from "../utils.ts";
 
 export const registerInfoTools = (
   server: McpServer,
@@ -20,15 +20,13 @@ export const registerInfoTools = (
       idempotentHint: true,
       openWorldHint: true,
     },
-    async () => {
-      const result = await runtime.runPromiseExit(
+    async () =>
+      runTool(
+        runtime,
         Effect.gen(function* () {
           const client = yield* Neo4jClient;
           return yield* client.getServerInfo();
         }),
-      );
-      if (result._tag === "Failure") return formatError(result.cause);
-      return formatSuccess(result.value);
-    },
+      ),
   );
 };

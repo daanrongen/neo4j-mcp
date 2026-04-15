@@ -4,7 +4,7 @@ import { Effect } from "effect";
 import { z } from "zod";
 import type { Neo4jError, QueryError } from "../../domain/errors.ts";
 import { Neo4jClient } from "../../domain/Neo4jClient.ts";
-import { formatError, formatSuccess } from "../utils.ts";
+import { runTool } from "../utils.ts";
 
 export const registerQueryTools = (
   server: McpServer,
@@ -27,16 +27,14 @@ export const registerQueryTools = (
       idempotentHint: false,
       openWorldHint: true,
     },
-    async ({ cypher, params }) => {
-      const result = await runtime.runPromiseExit(
+    async ({ cypher, params }) =>
+      runTool(
+        runtime,
         Effect.gen(function* () {
           const client = yield* Neo4jClient;
           return yield* client.runQuery(cypher, params);
         }),
-      );
-      if (result._tag === "Failure") return formatError(result.cause);
-      return formatSuccess(result.value);
-    },
+      ),
   );
 
   server.tool(
@@ -56,15 +54,13 @@ export const registerQueryTools = (
       idempotentHint: true,
       openWorldHint: true,
     },
-    async ({ cypher, params }) => {
-      const result = await runtime.runPromiseExit(
+    async ({ cypher, params }) =>
+      runTool(
+        runtime,
         Effect.gen(function* () {
           const client = yield* Neo4jClient;
           return yield* client.runReadQuery(cypher, params);
         }),
-      );
-      if (result._tag === "Failure") return formatError(result.cause);
-      return formatSuccess(result.value);
-    },
+      ),
   );
 };
