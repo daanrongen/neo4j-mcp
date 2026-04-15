@@ -112,34 +112,30 @@ export const Neo4jClientLive = Layer.scoped(
 
       getLabels: () =>
         runSession(driver, async (session) => {
-          const result = await session.run("CALL db.labels() YIELD label RETURN label");
-          const labels: NodeLabel[] = [];
-          for (const record of result.records) {
-            const label = record.get("label") as string;
-            const countResult = await session.run(
-              `MATCH (n:\`${label}\`) RETURN count(n) AS count`,
-            );
-            const count = (countResult.records[0]?.get("count") as Integer).toNumber();
-            labels.push(new NodeLabel({ name: label, count }));
-          }
-          return labels;
+          const result = await session.run(
+            "MATCH (n) UNWIND labels(n) AS label RETURN label, count(*) AS count",
+          );
+          return result.records.map(
+            (r) =>
+              new NodeLabel({
+                name: r.get("label") as string,
+                count: (r.get("count") as Integer).toNumber(),
+              }),
+          );
         }),
 
       getRelationshipTypes: () =>
         runSession(driver, async (session) => {
           const result = await session.run(
-            "CALL db.relationshipTypes() YIELD relationshipType RETURN relationshipType",
+            "MATCH ()-[r]->() RETURN type(r) AS type, count(*) AS count",
           );
-          const types: RelationshipType[] = [];
-          for (const record of result.records) {
-            const name = record.get("relationshipType") as string;
-            const countResult = await session.run(
-              `MATCH ()-[r:\`${name}\`]->() RETURN count(r) AS count`,
-            );
-            const count = (countResult.records[0]?.get("count") as Integer).toNumber();
-            types.push(new RelationshipType({ name, count }));
-          }
-          return types;
+          return result.records.map(
+            (r) =>
+              new RelationshipType({
+                name: r.get("type") as string,
+                count: (r.get("count") as Integer).toNumber(),
+              }),
+          );
         }),
 
       getPropertyKeys: () =>
@@ -158,31 +154,29 @@ export const Neo4jClientLive = Layer.scoped(
 
       getSchema: () =>
         runSession(driver, async (session) => {
-          // Labels
-          const labelsResult = await session.run("CALL db.labels() YIELD label RETURN label");
-          const labels: NodeLabel[] = [];
-          for (const record of labelsResult.records) {
-            const label = record.get("label") as string;
-            const countResult = await session.run(
-              `MATCH (n:\`${label}\`) RETURN count(n) AS count`,
-            );
-            const count = (countResult.records[0]?.get("count") as Integer).toNumber();
-            labels.push(new NodeLabel({ name: label, count }));
-          }
-
-          // Relationship types
-          const relResult = await session.run(
-            "CALL db.relationshipTypes() YIELD relationshipType RETURN relationshipType",
+          // Labels — single round-trip
+          const labelsResult = await session.run(
+            "MATCH (n) UNWIND labels(n) AS label RETURN label, count(*) AS count",
           );
-          const relationshipTypes: RelationshipType[] = [];
-          for (const record of relResult.records) {
-            const name = record.get("relationshipType") as string;
-            const countResult = await session.run(
-              `MATCH ()-[r:\`${name}\`]->() RETURN count(r) AS count`,
-            );
-            const count = (countResult.records[0]?.get("count") as Integer).toNumber();
-            relationshipTypes.push(new RelationshipType({ name, count }));
-          }
+          const labels: NodeLabel[] = labelsResult.records.map(
+            (r) =>
+              new NodeLabel({
+                name: r.get("label") as string,
+                count: (r.get("count") as Integer).toNumber(),
+              }),
+          );
+
+          // Relationship types — single round-trip
+          const relResult = await session.run(
+            "MATCH ()-[r]->() RETURN type(r) AS type, count(*) AS count",
+          );
+          const relationshipTypes: RelationshipType[] = relResult.records.map(
+            (r) =>
+              new RelationshipType({
+                name: r.get("type") as string,
+                count: (r.get("count") as Integer).toNumber(),
+              }),
+          );
 
           // Property keys
           const propsResult = await session.run(
