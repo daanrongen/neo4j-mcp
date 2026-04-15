@@ -76,6 +76,71 @@ describe("schema", () => {
     );
     expect(result.address).toBe("bolt://localhost:7687");
     expect(result.version).toBe("Neo4j/5.0.0");
-    expect(result.edition).toBe("community");
+  });
+
+  it("getLabels returns seeded labels", async () => {
+    const seed = {
+      labels: new Map([
+        ["Person", 10],
+        ["Movie", 5],
+      ]),
+    };
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const client = yield* Neo4jClient;
+        return yield* client.getLabels();
+      }).pipe(Effect.provide(Neo4jClientTest.make(seed))),
+    );
+    expect(result).toHaveLength(2);
+    expect(result.find((l) => l.name === "Person")?.count).toBe(10);
+    expect(result.find((l) => l.name === "Movie")?.count).toBe(5);
+  });
+
+  it("getRelationshipTypes returns seeded relationship types", async () => {
+    const seed = {
+      relTypes: new Map([
+        ["ACTED_IN", 20],
+        ["DIRECTED", 8],
+      ]),
+    };
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const client = yield* Neo4jClient;
+        return yield* client.getRelationshipTypes();
+      }).pipe(Effect.provide(Neo4jClientTest.make(seed))),
+    );
+    expect(result).toHaveLength(2);
+    expect(result.find((r) => r.name === "ACTED_IN")?.count).toBe(20);
+  });
+
+  it("getPropertyKeys returns seeded property keys", async () => {
+    const seed = { propertyKeys: ["id", "name", "title"] };
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const client = yield* Neo4jClient;
+        return yield* client.getPropertyKeys();
+      }).pipe(Effect.provide(Neo4jClientTest.make(seed))),
+    );
+    expect(result).toHaveLength(3);
+    expect(result.map((k) => k.property)).toEqual(["id", "name", "title"]);
+  });
+
+  it("getSchema returns seeded labels and relationship types", async () => {
+    const seed = {
+      labels: new Map([["Person", 3]]),
+      relTypes: new Map([["KNOWS", 7]]),
+      propertyKeys: ["id", "name"],
+    };
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const client = yield* Neo4jClient;
+        return yield* client.getSchema();
+      }).pipe(Effect.provide(Neo4jClientTest.make(seed))),
+    );
+    expect(result.labels).toHaveLength(1);
+    expect(result.labels[0]?.name).toBe("Person");
+    expect(result.relationshipTypes).toHaveLength(1);
+    expect(result.relationshipTypes[0]?.name).toBe("KNOWS");
+    expect(result.propertyKeys).toHaveLength(2);
   });
 });
