@@ -3,7 +3,7 @@ import type { ManagedRuntime } from "effect";
 import { Effect } from "effect";
 import type { Neo4jError, QueryError } from "../../domain/errors.ts";
 import { Neo4jClient } from "../../domain/Neo4jClient.ts";
-import { formatError, formatSuccess } from "../utils.ts";
+import { runTool } from "../utils.ts";
 
 export const registerSchemaTools = (
   server: McpServer,
@@ -20,16 +20,14 @@ export const registerSchemaTools = (
       idempotentHint: true,
       openWorldHint: true,
     },
-    async () => {
-      const result = await runtime.runPromiseExit(
+    async () =>
+      runTool(
+        runtime,
         Effect.gen(function* () {
           const client = yield* Neo4jClient;
           return yield* client.getSchema();
         }),
-      );
-      if (result._tag === "Failure") return formatError(result.cause);
-      return formatSuccess(result.value);
-    },
+      ),
   );
 
   server.tool(
@@ -43,16 +41,14 @@ export const registerSchemaTools = (
       idempotentHint: true,
       openWorldHint: true,
     },
-    async () => {
-      const result = await runtime.runPromiseExit(
+    async () =>
+      runTool(
+        runtime,
         Effect.gen(function* () {
           const client = yield* Neo4jClient;
           return yield* client.getLabels();
         }),
-      );
-      if (result._tag === "Failure") return formatError(result.cause);
-      return formatSuccess(result.value);
-    },
+      ),
   );
 
   server.tool(
@@ -66,16 +62,14 @@ export const registerSchemaTools = (
       idempotentHint: true,
       openWorldHint: true,
     },
-    async () => {
-      const result = await runtime.runPromiseExit(
+    async () =>
+      runTool(
+        runtime,
         Effect.gen(function* () {
           const client = yield* Neo4jClient;
           return yield* client.getRelationshipTypes();
         }),
-      );
-      if (result._tag === "Failure") return formatError(result.cause);
-      return formatSuccess(result.value);
-    },
+      ),
   );
 
   server.tool(
@@ -89,16 +83,14 @@ export const registerSchemaTools = (
       idempotentHint: true,
       openWorldHint: true,
     },
-    async () => {
-      const result = await runtime.runPromiseExit(
+    async () =>
+      runTool(
+        runtime,
         Effect.gen(function* () {
           const client = yield* Neo4jClient;
           return yield* client.getIndexes();
         }),
-      );
-      if (result._tag === "Failure") return formatError(result.cause);
-      return formatSuccess(result.value);
-    },
+      ),
   );
 
   server.tool(
@@ -112,15 +104,13 @@ export const registerSchemaTools = (
       idempotentHint: true,
       openWorldHint: true,
     },
-    async () => {
-      const result = await runtime.runPromiseExit(
+    async () =>
+      runTool(
+        runtime,
         Effect.gen(function* () {
           const client = yield* Neo4jClient;
           return yield* client.getConstraints();
         }),
-      );
-      if (result._tag === "Failure") return formatError(result.cause);
-      return formatSuccess(result.value);
-    },
+      ),
   );
 };

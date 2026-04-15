@@ -1,12 +1,10 @@
 #!/usr/bin/env bun
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { Layer, ManagedRuntime } from "effect";
+import { ManagedRuntime } from "effect";
 import { Neo4jClientLive } from "./infra/Neo4jClientLive.ts";
 import { createMcpServer } from "./mcp/server.ts";
 
-const layer = Layer.mergeAll(Neo4jClientLive);
-
-const runtime = ManagedRuntime.make(layer);
+const runtime = ManagedRuntime.make(Neo4jClientLive);
 
 const server = createMcpServer(runtime);
 
