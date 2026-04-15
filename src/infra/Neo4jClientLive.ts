@@ -73,13 +73,13 @@ export const Neo4jClientLive = Layer.scoped(
         const result = await session.run(
           "MATCH (n) UNWIND labels(n) AS label RETURN label, count(*) AS count",
         );
-        return result.records.map(
-          (r) =>
-            new NodeLabel({
-              name: r.get("label") as string,
-              count: (r.get("count") as Integer).toNumber(),
-            }),
-        );
+        return result.records.map((r) => {
+          const count = r.get("count");
+          return new NodeLabel({
+            name: r.get("label") as string,
+            count: neo4j.isInt(count) ? count.toNumber() : 0,
+          });
+        });
       });
 
     const getRelationshipTypes = () =>
@@ -87,13 +87,13 @@ export const Neo4jClientLive = Layer.scoped(
         const result = await session.run(
           "MATCH ()-[r]->() RETURN type(r) AS type, count(*) AS count",
         );
-        return result.records.map(
-          (r) =>
-            new RelationshipType({
-              name: r.get("type") as string,
-              count: (r.get("count") as Integer).toNumber(),
-            }),
-        );
+        return result.records.map((r) => {
+          const count = r.get("count");
+          return new RelationshipType({
+            name: r.get("type") as string,
+            count: neo4j.isInt(count) ? count.toNumber() : 0,
+          });
+        });
       });
 
     const getPropertyKeys = () =>
