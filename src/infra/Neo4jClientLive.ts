@@ -68,6 +68,48 @@ export const Neo4jClientLive = Layer.scoped(
       (d) => Effect.promise(() => d.close()),
     );
 
+    const getLabels = () =>
+      runSession(driver, async (session) => {
+        const result = await session.run(
+          "MATCH (n) UNWIND labels(n) AS label RETURN label, count(*) AS count",
+        );
+        return result.records.map(
+          (r) =>
+            new NodeLabel({
+              name: r.get("label") as string,
+              count: (r.get("count") as Integer).toNumber(),
+            }),
+        );
+      });
+
+    const getRelationshipTypes = () =>
+      runSession(driver, async (session) => {
+        const result = await session.run(
+          "MATCH ()-[r]->() RETURN type(r) AS type, count(*) AS count",
+        );
+        return result.records.map(
+          (r) =>
+            new RelationshipType({
+              name: r.get("type") as string,
+              count: (r.get("count") as Integer).toNumber(),
+            }),
+        );
+      });
+
+    const getPropertyKeys = () =>
+      runSession(driver, async (session) => {
+        const result = await session.run(
+          "CALL db.propertyKeys() YIELD propertyKey RETURN propertyKey",
+        );
+        return result.records.map(
+          (r: (typeof result.records)[number]) =>
+            new PropertyKey({
+              label: "",
+              property: r.get("propertyKey") as string,
+            }),
+        );
+      });
+
     return {
       runQuery: (cypher, params = {}) =>
         runSession(driver, async (session) => {
@@ -109,88 +151,26 @@ export const Neo4jClientLive = Layer.scoped(
           ),
         ),
 
-      getLabels: () =>
-        runSession(driver, async (session) => {
-          const result = await session.run(
-            "MATCH (n) UNWIND labels(n) AS label RETURN label, count(*) AS count",
-          );
-          return result.records.map(
-            (r) =>
-              new NodeLabel({
-                name: r.get("label") as string,
-                count: (r.get("count") as Integer).toNumber(),
-              }),
-          );
-        }),
+      getLabels,
 
-      getRelationshipTypes: () =>
-        runSession(driver, async (session) => {
-          const result = await session.run(
-            "MATCH ()-[r]->() RETURN type(r) AS type, count(*) AS count",
-          );
-          return result.records.map(
-            (r) =>
-              new RelationshipType({
-                name: r.get("type") as string,
-                count: (r.get("count") as Integer).toNumber(),
-              }),
-          );
-        }),
+      getRelationshipTypes,
 
-      getPropertyKeys: () =>
-        runSession(driver, async (session) => {
-          const result = await session.run(
-            "CALL db.propertyKeys() YIELD propertyKey RETURN propertyKey",
-          );
-          return result.records.map(
-            (r: (typeof result.records)[number]) =>
-              new PropertyKey({
-                label: "",
-                property: r.get("propertyKey") as string,
-              }),
-          );
-        }),
+      getPropertyKeys,
 
       getSchema: () =>
-        runSession(driver, async (session) => {
-          // Labels — single round-trip
-          const labelsResult = await session.run(
-            "MATCH (n) UNWIND labels(n) AS label RETURN label, count(*) AS count",
-          );
-          const labels: NodeLabel[] = labelsResult.records.map(
-            (r) =>
-              new NodeLabel({
-                name: r.get("label") as string,
-                count: (r.get("count") as Integer).toNumber(),
-              }),
-          );
-
-          // Relationship types — single round-trip
-          const relResult = await session.run(
-            "MATCH ()-[r]->() RETURN type(r) AS type, count(*) AS count",
-          );
-          const relationshipTypes: RelationshipType[] = relResult.records.map(
-            (r) =>
-              new RelationshipType({
-                name: r.get("type") as string,
-                count: (r.get("count") as Integer).toNumber(),
-              }),
-          );
-
-          // Property keys
-          const propsResult = await session.run(
-            "CALL db.propertyKeys() YIELD propertyKey RETURN propertyKey",
-          );
-          const propertyKeys: PropertyKey[] = propsResult.records.map(
-            (r: (typeof propsResult.records)[number]) =>
-              new PropertyKey({
-                label: "",
-                property: r.get("propertyKey") as string,
-              }),
-          );
-
-          return new SchemaInfo({ labels, relationshipTypes, propertyKeys });
-        }),
+        Effect.all(
+          {
+            labels: getLabels(),
+            relationshipTypes: getRelationshipTypes(),
+            propertyKeys: getPropertyKeys(),
+          },
+          { concurrency: "unbounded" },
+        ).pipe(
+          Effect.map(
+            ({ labels, relationshipTypes, propertyKeys }) =>
+              new SchemaInfo({ labels, relationshipTypes, propertyKeys }),
+          ),
+        ),
 
       getIndexes: () =>
         runSession(driver, async (session) => {
